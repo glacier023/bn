@@ -2,14 +2,15 @@
 const express = require('express');
 const cors = require('cors');
 const axios = require('axios');
-const NodeCache = require('node-cache');
 const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Cache for 30 seconds
-const cache = new NodeCache({ stdTTL: 30 });
+// Simple in-memory cache (替代node-cache)
+let cachedData = null;
+let cacheTime = null;
+const CACHE_DURATION = 30000; // 30 seconds
 
 // Middleware
 app.use(cors());
@@ -28,8 +29,7 @@ app.get('/', (req, res) => {
 app.get('/api/alpha-tokens', async (req, res) => {
     try {
         // Check cache first
-        const cachedData = cache.get('alpha-tokens');
-        if (cachedData) {
+        if (cachedData && cacheTime && (Date.now() - cacheTime < CACHE_DURATION)) {
             console.log('Returning cached Alpha tokens');
             return res.json(cachedData);
         }
@@ -49,7 +49,8 @@ app.get('/api/alpha-tokens', async (req, res) => {
 
         if (response.data && response.data.success) {
             // Cache the result
-            cache.set('alpha-tokens', response.data);
+            cachedData = response.data;
+            cacheTime = Date.now();
             console.log(`Successfully fetched ${response.data.data?.length || 0} tokens`);
             res.json(response.data);
         } else {
