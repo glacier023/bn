@@ -48,11 +48,20 @@ app.get('/api/alpha-tokens', async (req, res) => {
         });
 
         if (response.data && response.data.success) {
+            // Transform data to standardize network names
+            const transformedData = {
+                ...response.data,
+                data: response.data.data.map(token => ({
+                    ...token,
+                    network: mapNetwork(token.chainName || token.network || token.chain)
+                }))
+            };
+            
             // Cache the result
-            cachedData = response.data;
+            cachedData = transformedData;
             cacheTime = Date.now();
-            console.log(`Successfully fetched ${response.data.data?.length || 0} tokens`);
-            res.json(response.data);
+            console.log(`Successfully fetched ${transformedData.data?.length || 0} tokens`);
+            res.json(transformedData);
         } else {
             throw new Error('Invalid response from Binance API');
         }
@@ -118,6 +127,31 @@ app.get('/health', (req, res) => {
         uptime: process.uptime()
     });
 });
+
+// Helper function to map network names
+function mapNetwork(network) {
+    if (!network) return 'Unknown';
+    
+    const networkMap = {
+        'SOL': 'Solana',
+        'SOLANA': 'Solana',
+        'BSC': 'BSC',
+        'BNB': 'BSC',
+        'BNB SMART CHAIN': 'BSC',
+        'BINANCE SMART CHAIN': 'BSC',
+        'ETH': 'Ethereum',
+        'ETHEREUM': 'Ethereum',
+        'POLYGON': 'Polygon',
+        'MATIC': 'Polygon',
+        'AVAX': 'Avalanche',
+        'AVALANCHE': 'Avalanche',
+        'ARB': 'Arbitrum',
+        'ARBITRUM': 'Arbitrum'
+    };
+
+    const normalized = network.toUpperCase().trim();
+    return networkMap[normalized] || network;
+}
 
 // Start server
 const server = app.listen(PORT, () => {
